@@ -33,8 +33,8 @@ if __name__ == '__main__':
     
     FLAGS.models_path = {'generator_unbiased_path': 'models//generator//unbiased_generator.hdf5',
                        'generator_biased_path': 'models//generator//biased_generator.hdf5',
-                       'transformer_standard_path': 'models//transformer//transformer_standard.h5',
-                       'transformer_mlm_path': 'models//transformer//model_standard.h5',
+                       'transformer_mlm_standard': 'models//transformer//model_standard.h5',
+                       'transformer_mlm_stereo': 'models//transformer//model_stereo.h5',
                        'predictor_standard': 'models//predictor//predictor_standard.h5',
                        'predictor_mlm': 'models//predictor//predictor_mlm.h5',
                        'generator_data_path': 'data/example_data.smi',
@@ -48,8 +48,7 @@ if __name__ == '__main__':
         os.makedirs(FLAGS.log_dir)
     if not os.path.exists(FLAGS.checkpoint_path):
         os.makedirs(FLAGS.checkpoint_path)
-    if not os.path.exists(FLAGS.path_generated_mols):
-        os.makedirs(FLAGS.path_generated_mols)
+
         
     logging(str(FLAGS), FLAGS)
     

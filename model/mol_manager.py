@@ -8,9 +8,7 @@ Created on Fri Jul 30 16:49:39 2021
 # internal
 from dataloader.dataloader import DataLoader
 from utils.utils import Utils  
-from model.transformer import Transformer
 from model.transformer_mlm import Transformer_mlm
-from model.mol_evaluation import Molecular_evaluation
 
 # external
 import tensorflow as tf
@@ -34,8 +32,13 @@ class Mol_manager:
         # Parameters' file
         self.FLAGS = FLAGS
         
-        # Loading the SMILES vocabulary
-        self.token_table = Utils().mlm_transf_voc 
+        if self.FLAGS.vocabulary == 'standard':
+            # Loading the selected SMILES vocabulary
+            self.token_table = Utils().standard_voc 
+        elif self.FLAGS.vocabulary == 'stereo':
+            # Loading the selected SMILES vocabulary
+            self.token_table = Utils().stereo_voc 
+        
         self.special_tokens = Utils().special_tokens
         
         # Building the token-integer dictionary  
@@ -50,10 +53,6 @@ class Mol_manager:
             self.predictor = DataLoader().load_predictor(self.FLAGS)
             self.transformer_model = Transformer_mlm(self.FLAGS)
        
-        
-        # Load Predictor model
-        self.predictor = DataLoader().load_predictor(self.FLAGS)
-        
 
     def load_process_data(self):   
         """ 
@@ -122,10 +121,10 @@ class Mol_manager:
             nfgs_all.append(nfg_idxs_updated)
             tokens_all.append(tokens)
         
-        self.df['smiles'] = smiles#[100:250]
-        self.df['fgs'] = fgs_all#[100:250]
-        self.df['nfgs'] = nfgs_all#[100:250]
-        self.df['tokens'] = tokens_all#[100:250]
+        self.df['smiles'] = smiles
+        self.df['fgs'] = fgs_all
+        self.df['nfgs'] = nfgs_all
+        self.df['tokens'] = tokens_all
         
     def compute_aw(self):  
         """
@@ -146,7 +145,7 @@ class Mol_manager:
         
         # Apply the Multi-Head Attention to extract token scores and contextual embeddings
         for i,smi in enumerate(smiles):
-            token_importance,tokens_transf = self.transformer_model.process_mols(smi,self.FLAGS.token_importance_strategy)
+            token_importance,tokens_transf = self.transformer_model.process_mols(smi)
             
             fg_idxs = self.df['fgs'].iloc[i]
             nfg_idxs = self.df['nfgs'].iloc[i]

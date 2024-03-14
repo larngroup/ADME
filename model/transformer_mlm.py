@@ -7,7 +7,6 @@ Created on Fri Jul 30 16:49:39 2021
 
 # internal
 from utils.utils import Utils
-from model.encoder_mlm import Encoder
 from model.transformers import Masked_Smiles_Model
 
 # external
@@ -23,8 +22,12 @@ class Transformer_mlm:
         # Parameters' declaration file
         self.FLAGS = FLAGS
         
-        # Load the table of possible tokens
-        self.token_table = Utils().mlm_transf_voc 
+        # Loading the selected SMILES vocabulary
+        if self.FLAGS.vocabulary == 'standard':
+            self.token_table = Utils().standard_voc 
+        elif self.FLAGS.vocabulary == 'stereo':
+            self.token_table = Utils().stereo_voc 
+             
         self.vocab_size = len(self.token_table)
         
         # Dictionary that makes the token-integer correspondence
@@ -32,7 +35,7 @@ class Transformer_mlm:
         self.inv_tokenDict = {v: k for k, v in self.tokenDict.items()}
         
         # Model parameters' definition
-        self.max_length = 150# self.FLAGS.max_str_len
+        self.max_length = 150
         self.model_size = 256
         self.n_heads = 4
         self.n_layers = 4
@@ -54,15 +57,17 @@ class Transformer_mlm:
         """ Builds the Transformer architecture"""
         
         self.encoder = Masked_Smiles_Model(self.model_size,self.ff_dim,self.n_heads,self.n_layers,
-                                           self.max_length,self.vocab_size,self.activation_func) 
-    
+                                           self.max_length,self.vocab_size,self.activation_func)     
         
         sequence_in = tf.constant(np.zeros((1,150)))
         _,_,all_weights,_ = self.encoder(sequence_in)
         
-        # print(encoder_output.shape)
-        
-        self.encoder.load_weights(self.FLAGS.models_path['transformer_mlm_path'])  
+        if self.FLAGS.vocabulary == 'standard':
+            self.encoder.load_weights(self.FLAGS.models_path['transformer_mlm_standard'])  
+        elif self.FLAGS.vocabulary == 'stereo':
+            self.encoder.load_weights(self.FLAGS.models_path['transformer_mlm_standard'])  
+            
+         
         
     
     def loss_function(self,y_true,y_pred, mask):
@@ -133,7 +138,7 @@ class Transformer_mlm:
             not_fg = [indx for indx in range(len(x[smile_index])) if (indx not in fg) and (x[smile_index][indx] not in [self.token_table.index('<CLS>'),
 			self.token_table.index('<PAD>'), self.token_table.index('<SEP>'), self.token_table.index('<MASK>') ])] 
             
-            # from the 2% of tokens that will be masked, half will be from the fg and the other half from the rest of the schleton
+            # from the 20% of tokens that will be masked, half will be from the fg and the other half from the rest of the schleton
             p_fg = 0.1
             p_not_fg = 0.1 
             
@@ -148,9 +153,7 @@ class Transformer_mlm:
             fg_temp = [fg[n] for n in shuffle_fg[:num_mask_fg]] 
             not_fg_temp = [not_fg[n] for n in shuffle_not_fg[:num_mask_not_fg]] 
 			
-            mask_index = fg_temp + not_fg_temp#fg[shuffle_fg[:num_mask_fg]]+ shuffle_not_fg[:num_mask_not_fg] 
-            # print('sequence: ',len(x[smile_index]))
-            # print('masked tokens: ',len(mask_index))
+            mask_index = fg_temp + not_fg_temp
             masked_pos =[0]*len(x[smile_index])
 			
             for pos in mask_index:
@@ -165,7 +168,7 @@ class Transformer_mlm:
         return x, masked_positions
         
 
-    def process_mols(self,sequence_in,extraction_option):
+    def process_mols(self,sequence_in):
         """
         Parameters
         ----------
@@ -196,42 +199,19 @@ class Transformer_mlm:
         self.input_masked, self.masked_positions = self.masking(input_raw, fgs, threshold_min)   
         
         # Transformer encoder: maps the input tokens to the contextual embeddings and outputs attention weights
-        # _, _,alignments = self.encoder(tf.constant( self.input_masked),training=False)
         _,_,alignments,aw_layers_heads = self.encoder(tf.constant( self.input_masked),training=False)
-
-        # Attention weight's processing according to the selections in the argument_parser.py file
-        if extraction_option == 'individual_head':
+        # alignments 4layers(1,150,150) - heads concatenated
+        # aw_layers_heads 4layers(4,150,150) - all heads
+        
+        # Attention weight's processing according to the selections in the parameters file
+        if self.FLAGS.heads_option == 'fully_costumize_head_and_layer':
             # customize the the desired strategy
-            last_layer = True
-            head_idx = 3 # from 0 to 3
+            selected_layer_idx = 0 # from 0 to 3
+            selected_head_idx = 3 # from 0 to 3
             plot_attentionhead = False
             
-            if last_layer:
-                # # Extract only the last layer 
-                # attention_scores = alignments[-1].numpy()
-                # selected_head = attention_scores[0,head_idx,:token_len,:token_len] 
-                
-                # Extract only the last layer 
-                # attention_scores = alignments[3].numpy()
-                # selected_head = attention_scores[0,:token_len,:token_len] 
-                
-                # first layer, head 0
-                attention_scores_all_heads = aw_layers_heads[0].numpy()
-                selected_head = attention_scores_all_heads[0,:token_len,:token_len] 
-       
-            else:
-                # as_all = [al.numpy() for al in alignments]
-                # attention_scores = np.zeros((self.n_heads,self.max_length,self.max_length))
-                # for l in range(len(as_all)):
-                #     attention_scores = attention_scores + as_all[l][0,:,:,:]
-                # selected_head = attention_scores[head_idx,:token_len,:token_len]
-                
-                as_all = [al.numpy() for al in alignments]
-                attention_scores = np.zeros((1,self.max_length,self.max_length))
-                for l in range(len(as_all)):
-                    attention_scores = attention_scores + as_all[l][0,:,:]
-                selected_head = attention_scores[0,:token_len,:token_len]
-                
+            attention_scores_all_heads = aw_layers_heads[selected_layer_idx].numpy()
+            selected_head = attention_scores_all_heads[selected_head_idx,:token_len,:token_len] 
        
             if plot_attentionhead:
                             
@@ -272,117 +252,107 @@ class Transformer_mlm:
             importance_tokens = [np.mean(l) for l in importance_all]
             
         
-        
-        elif extraction_option == 'lastLayer_raw' or extraction_option == 'firstLayer_raw':
-            # Last layer, all heads, raw attention values
+        elif self.FLAGS.heads_option == 'concatenate_heads':
+            if self.FLAGS.layers_options == 'single' and self.FLAGS.computation_strategy == 'A':
+                # last/first layer, all heads, raw attention values
 
-            # Extract only the last layer 
-            # attention_scores = alignments[-1].numpy()
-            attention_scores = alignments[-1].numpy()
-            selected_attention = attention_scores[0,:token_len,:token_len]
-            # Sum the aw of all heads of the selected layer
-            # selected_head = np.sum(attention_scores[0,:token_len,:token_len],axis=0)  
+                # Extract only the last layer 
+                attention_scores = alignments[self.FLAGS.single_option].numpy()
+                selected_attention = attention_scores[0,:token_len,:token_len]
+                 
+                # Extract the importance of each specific token
+                importance_all = []            
+                size_h = len(selected_attention)
+                for c in range(0,size_h):
         
-            # Extract the importance of each specific token
-            importance_all = []            
-            size_h = len(selected_attention)
-            for c in range(0,size_h):
-    
-                importance_element = []
-                importance_element.append(selected_attention[c,c])
+                    importance_element = []
+                    importance_element.append(selected_attention[c,c])
+                    
+                    for v in range(0,size_h):
+                        if v!=c:
+                            importance_element.append(selected_attention[c,v])
+                            importance_element.append(selected_attention[v,c])
                 
-                for v in range(0,size_h):
-                    if v!=c:
-                        importance_element.append(selected_attention[c,v])
-                        importance_element.append(selected_attention[v,c])
-            
-                importance_all.append(importance_element)
-            importance_tokens = [np.mean(l) for l in importance_all]
+                    importance_all.append(importance_element)
+                importance_tokens = [np.mean(l) for l in importance_all]
          
             
-        elif extraction_option == 'lastLayer_average' or extraction_option == 'firstLayer_average' :
-            # Last layer, all heads, average attention values
-
-            # Extract only the last layer 
-            attention_scores = alignments[-1].numpy()
-            selected_attention = attention_scores[0,:token_len,:token_len]
-            
-            # # Sum the aw of all heads of the selected layer
-            # selected_head = np.sum(attention_scores[0,:,:token_len,:token_len],axis=0)  
-        
-            # Extract the importance of each specific token
-            importance_all = []            
-            size_h = len(selected_attention)
-            for c in range(0,size_h):
-    
-                importance_element = []
-                importance_element.append(selected_attention[c,c])
-                
-                for v in range(0,size_h):
-                    if v!=c:
-                        element = (selected_attention[c,v] + selected_attention[v,c])/2
-                        importance_element.append(element)
+            elif self.FLAGS.layers_options == 'single' and self.FLAGS.computation_strategy == 'B':            
+                 # Last layer, all heads, average attention values
+                 # Extract only the last layer 
+                 attention_scores = alignments[-1].numpy()
+                 selected_attention = attention_scores[0,:token_len,:token_len]
+         
+                 # Extract the importance of each specific token
+                 importance_all = []            
+                 size_h = len(selected_attention)
+                 for c in range(0,size_h):
+                     importance_element = []
+                     importance_element.append(selected_attention[c,c])
                     
-                importance_all.append(importance_element)
-            importance_tokens = [np.mean(l) for l in importance_all]
-        
-        elif extraction_option == 'allLayers_raw':
-            
-            # Extract values from all layers
-            alignments_np = [align.numpy() for align in alignments]
-            alignments_layers = np.zeros((1,self.max_length,self.max_length))
-            for l in range(len(alignments_np)):
-                alignments_layers = alignments_layers + alignments_np[l][0,:,:]
-            
-            selected_attention = alignments_layers[0,:token_len,:token_len]
-            
-            # Extract the importance of each specific token
-            importance_all = []
-          
-            size_h = len(selected_attention)
-            for c in range(0,size_h):
-    
-                importance_element = []
-                importance_element.append(selected_attention[c,c])
-                
-                for v in range(0,size_h):
-                    if v!=c:
-                        # element = (selected_head[c,v] + selected_head[v,c])/2
-                        # importance_element.append(element)
-                        importance_element.append(selected_attention[c,v])
-                        importance_element.append(selected_attention[v,c])
-            
-                importance_all.append(importance_element)
-     
-            importance_tokens = [np.mean(l) for l in importance_all]
-            
-        elif extraction_option == 'allLayers_average':   
-            # Extract values from all layers
-            alignments_np = [align.numpy() for align in alignments]
-            alignments_layers = np.zeros((1,self.max_length,self.max_length))
-            for l in range(len(alignments_np)):
-                alignments_layers = alignments_layers + alignments_np[l][0,:,:]
-            
-            # # Extract values from all heads
-            # selected_head = np.sum(alignments_layers[:,:token_len,:token_len],axis=0)
-            selected_attention = alignments_layers[0,:token_len,:token_len]
-            # Extract the importance of each specific token
-            importance_all = []
-          
-            size_h = len(selected_attention)
-            for c in range(0,size_h):
-    
-                importance_element = []
-                importance_element.append(selected_attention[c,c])
-                
-                for v in range(0,size_h):
-                    if v!=c:
-                        element = (selected_attention[c,v] + selected_attention[v,c])/2
-                        importance_element.append(element)
+                     for v in range(0,size_h):
+                        if v!=c:
+                            element = (selected_attention[c,v] + selected_attention[v,c])/2
+                            importance_element.append(element)
                         
-                importance_all.append(importance_element)
+                     importance_all.append(importance_element)
+                 importance_tokens = [np.mean(l) for l in importance_all]
+        
+            elif self.FLAGS.layers_options == 'all' and self.FLAGS.computation_strategy == 'A':
+            
+                # Extract values from all layers
+                alignments_np = [align.numpy() for align in alignments]
+                alignments_layers = np.zeros((1,self.max_length,self.max_length))
+                for l in range(len(alignments_np)):
+                    alignments_layers = alignments_layers + alignments_np[l][0,:,:]
+                
+                selected_attention = alignments_layers[0,:token_len,:token_len]
+                
+                # Extract the importance of each specific token
+                importance_all = []
+              
+                size_h = len(selected_attention)
+                for c in range(0,size_h):
+        
+                    importance_element = []
+                    importance_element.append(selected_attention[c,c])
+                    
+                    for v in range(0,size_h):
+                        if v!=c:
+                            importance_element.append(selected_attention[c,v])
+                            importance_element.append(selected_attention[v,c])
+                
+                    importance_all.append(importance_element)
+         
+                importance_tokens = [np.mean(l) for l in importance_all]
+            
+            elif self.FLAGS.layers_options == 'all' and self.FLAGS.computation_strategy == 'B': 
+                # Extract values from all layers
+                alignments_np = [align.numpy() for align in alignments]
+                alignments_layers = np.zeros((1,self.max_length,self.max_length))
+                for l in range(len(alignments_np)):
+                    alignments_layers = alignments_layers + alignments_np[l][0,:,:]
+                
      
-            importance_tokens = [np.mean(l) for l in importance_all]
+                selected_attention = alignments_layers[0,:token_len,:token_len]
+                
+                # Extract the importance of each specific token
+                importance_all = []
+              
+                size_h = len(selected_attention)
+                for c in range(0,size_h):
+        
+                    importance_element = []
+                    importance_element.append(selected_attention[c,c])
+                    
+                    for v in range(0,size_h):
+                        if v!=c:
+                            element = (selected_attention[c,v] + selected_attention[v,c])/2
+                            importance_element.append(element)
+                            
+                    importance_all.append(importance_element)
+         
+                importance_tokens = [np.mean(l) for l in importance_all]
          
                   
         if self.FLAGS.plot_attention_scores:
@@ -424,16 +394,14 @@ class Transformer_mlm:
                 labels_tokens, fontdict=fontdict,rotation=90)
             except:
                 print('size mismatch')
-           
             ax.set_yticklabels(labels_tokens,fontdict=fontdict)
             fig.colorbar(im, fraction=0.046, pad=0.04)
-            print('done')
             
-        if self.FLAGS.softmax_activation:
-            print('Applying softmax')
-            importance_tokens = Utils.softmax(importance_tokens)
+            
         
-        return np.array(importance_tokens[1:]), tokens #  scores[1:] ,tokens #
+        importance_tokens = Utils.apply_activation(importance_tokens,self.FLAGS)
+        
+        return np.array(importance_tokens[1:]), tokens 
 
 
         

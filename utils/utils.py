@@ -26,17 +26,17 @@ class Utils:
                   '0', '1', '2','3', '4', '5', '6', '7', '8', '9', '.', '/',
                   '\\', '+', '-', 'c', 'n', 'o', 's','p','<Start>','<End>','<Padd>']
                 
-        # self.mlm_transf_voc  = ['<PAD>','Cl','Br','B','C','N','O','S','F',
-        #                               'P','I','(','[nH]','[n+]','[n-]','[nH+]','[N]',
-        #                               '[N+]','[N-]','[NH+]','[NH-]','[NH2+]','[NH3+]',
-        #                               '[O-]','[O]','[o+]','[O+]','[C@H]','[C@@H]',
-        #                               '[C@@]','[C@]','[CH]','[Cl-]','[S@@]','[S@]',
-        #                               '[S+]','[S-]','[SH]','[SH+]','[Si]','[s+]','[2H]',
-        #                               '[B-]','[Na+]','\\','/',')','=','-','.','#','%','0',
-        #                               '1','2','3','4','5','6','7','8','9','c', 'n','s', 'o',
-        #                               '<CLS>','<SEP>','<MASK>']
+        self.stereo_voc  = ['<PAD>','Cl','Br','B','C','N','O','S','F',
+                                      'P','I','(','[nH]','[n+]','[n-]','[nH+]','[N]',
+                                      '[N+]','[N-]','[NH+]','[NH-]','[NH2+]','[NH3+]',
+                                      '[O-]','[O]','[o+]','[O+]','[C@H]','[C@@H]',
+                                      '[C@@]','[C@]','[CH]','[Cl-]','[S@@]','[S@]',
+                                      '[S+]','[S-]','[SH]','[SH+]','[Si]','[s+]','[2H]',
+                                      '[B-]','[Na+]','\\','/',')','=','-','.','#','%','0',
+                                      '1','2','3','4','5','6','7','8','9','c', 'n','s', 'o',
+                                      '<CLS>','<SEP>','<MASK>']
         
-        self.mlm_transf_voc = ['<PAD>','Cl','Br','B','C','N','O','S','F',
+        self.standard_voc = ['<PAD>','Cl','Br','B','C','N','O','S','F',
                                       'P','I','(','[nH]','[n+]','[n-]','[nH+]',
                                       '[N]','[N+]','[N-]','[NH+]','[NH-]','[NH2+]',
                                       '[NH3+]','[O-]','[O]','[o+]','[O+]','[CH]',
@@ -223,40 +223,20 @@ class Utils:
             FLAGS (argparse): Implementation parameters
         
         """
-        strategy = FLAGS.token_importance_strategy
-        sftmx = FLAGS.softmax_activation
-        if strategy == 'firstLayer_raw':
-            layer = 'first'
-            computation = 'all values'
-            
-        elif strategy == 'lastLayer_raw':
-            layer = 'last'
-            computation = 'all values'
-            
-        elif strategy == 'firstLayer_average':
-            layer = 'first'
-            computation = 'average of bi-directional attention score'
-            
-        elif strategy == 'lastLayer_average':
-            layer = 'last'
-            computation = 'average of bi-directional attention score'
-            
-        elif strategy == 'allLayers_raw':
-            layer = 'all'
-            computation = 'all values'
-        elif strategy == 'allLayers_average':
-            layer = 'all'
-            computation = 'average of bi-directional attention score'
-        
-        activation = 'None'
-        if sftmx:
-            activation = 'Sotfmax'
-            
         print('\n*********** Implementation Parameters ***********')
-        print('Extraction layer: ', layer)
-        print('Calculation procedure: ', computation)
-        print('Activation: ', activation)
-    
+        if FLAGS.heads_option == 'fully_costumize_head_and_layer':
+            print('Customized head')
+        elif FLAGS.layers_options == 'single':
+            print('Layer: ', FLAGS.layers_options)
+            print('Option: ', FLAGS.single_option)
+            print('Computation strategy: ', FLAGS.computation_strategy)
+            
+        elif FLAGS.layers_options == 'all':
+            print('Layer: ', FLAGS.layers_options)
+            print('Computation strategy: ', FLAGS.computation_strategy)
+        
+        print('Activation: ',FLAGS.activation)
+            
     
     @staticmethod
     def read_csv(FLAGS):
@@ -1057,27 +1037,32 @@ class Utils:
                 PE[:, i] = np.cos(pos / 10000 ** ((i - 1) / model_size))
         return PE
     
-    def softmax(x):
-        """ Compute softmax activation for the vector x
+    def apply_activation(x,FLAGS):
+        """ Apply activation for the vector x of importance tokens
     
         Args:
             x (array): vector of floating values
         
         Returns:
-            Vector of the same size of x with their values softamax transformed
-        """         
-        # Softmax + temperature
+            Vector of the same size of x with its transformed values
+        """       
         x = np.array(x)
+        if FLAGS.activation=='softmax':
+        # Softmax + temperature
+            exp_x = np.exp(x /0.4)
+            x_out = exp_x / np.sum(exp_x, axis=-1, keepdims=True)
         
-        # exp_x = np.exp(x /0.4)
-        # sft_temp = exp_x / np.sum(exp_x, axis=-1, keepdims=True)
-        
-        # # Hyperbolic tangent
-        # tan_h = np.tanh(x)
-        
-        # # Sigmoid
-        sig = 1 / (1 + np.exp(-x))
-        return sig
+        elif FLAGS.activation=='tanh':
+            # Hyperbolic tangent
+            x_out = np.tanh(x)
+            
+        elif FLAGS.activation=='sigmoid':
+             # Sigmoid
+             x_out = 1 / (1 + np.exp(-x))
+        elif FLAGS.activation=='none':
+            x_out = x
+            
+        return x_out
            
     def generate_smiles(self,generator,predictor,transformer,tokenDict,FLAGS):
         """ Generation of new SMILES and properties prediction  

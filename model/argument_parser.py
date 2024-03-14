@@ -31,7 +31,7 @@ def argparser():
         '--receptor',
         type=str,
         default='usp7',
-        help='Target receptor (usp7,aa2a,jnk3,drd2 or gsk3)')
+        help='Target receptor (vegfr2,usp7,aa2a,jnk3,drd2 or gsk3)')
     
     parser.add_argument(
         '--normalization_strategy',
@@ -46,10 +46,35 @@ def argparser():
         help='Data Path')
 
     parser.add_argument(
-        '--token_importance_strategy',
+        '--heads_option',
         type=str,
-        default='individual_head',
-        help='Strategy to compute the individual token importance')
+        default='concatenate_heads',
+        help='Options: fully_costumize_head_and_layer, concatenate_heads')
+    
+    parser.add_argument(
+        '--layers_options',
+        type=str,
+        default='all',
+        help='Options: single, all')
+    
+    parser.add_argument(
+        '--single_option',
+        type=str,
+        default='last',
+        help='Options: first, last')
+    
+    parser.add_argument(
+        '--computation_strategy',
+        type=str,
+        default='A',
+        help='Options: A,B')
+
+    parser.add_argument(
+        '--activation',
+        type=str,
+        default='none',
+        help='Options: none,softmax,tanh,sigmoid')
+
 
     parser.add_argument(
         '--mols_to_generate',
@@ -124,10 +149,10 @@ def argparser():
         help='Optimizer')
     
     parser.add_argument(
-        '--scaffold_base',
+        '--vocabulary',
         type=str,
-        default='O=C1N(Cc2ccccc2)c2ccc(cc2C1=O)N(C(=O)CBr)C(C)C(=O)NCc1ccccc1',
-        help='SMILES of the base molecular structure')
+        default='standard',
+        help='Options for SMILES vocabulary (standard,steochemistry)')
 
     parser.add_argument(
         '--seed',
@@ -136,46 +161,10 @@ def argparser():
         help='Random seed')
     
     parser.add_argument(
-        '--memory_length',
-        type=int,
-        default=30,
-        help='Number of considered molecules to compute the Tanimoto diversity')
-
-    parser.add_argument(
-        '--threshold_set',
-        type=int,
-        default=2,
-        help='Identifier of the threshold to select the Generator')
-    
-    parser.add_argument(
         '--top_tokens_rate',
         type=float,
         default=0.33,
         help='Rate of important tokens ')
-
-    parser.add_argument(
-        '--reward_factor',
-        type=float,
-        default=3,
-        help='Multiplicative reward factor')
-    
-    parser.add_argument(
-        '--range_pic50',
-        type=list,
-        default=[0.45,2.78],
-        help='Minimum and maximum pIC50')
-
-    parser.add_argument(
-        '--range_sas',
-        type=list,
-        default=[1.3,3.75],
-        help='Minimum and maximum SAS')
-    
-    parser.add_argument(
-        '--weights',
-        type=list,
-        default=[0.5,0.5],
-        help='Initial importance weight assignment for SAS and pIC50')
 
     parser.add_argument(
         '--optimizer_fn',
