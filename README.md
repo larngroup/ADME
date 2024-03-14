@@ -1,2 +1,2 @@
 # ADME
-Attention-Driven Molecular Evaluation: Identifying Critical Functional Groups for Biological Affinity with Transformer models
+Attention-Driven Molecular Evaluation (ADME): Identifying Critical Functional Groups for Biological Affinity with Transformer models
