@@ -1,0 +1,15 @@
+pdbid ligid SMILES
+1YWN LIF COc1ccc(cc1)c2c(c3c(ncnc3o2)N)c4ccc(cc4)NC(=O)Nc5cc(ccc5F)C(F)(F)F
+2XIR 00J Cc1c(c2ccc(cc2o1)Oc3ccnc4c3ccc(c4)OCCN5CCOCC5)C(=O)NC
+4AG8 AXI CNC(=O)c1ccccc1Sc2ccc3c(c2)n[nH]c3C=Cc4ccccn4
+6GQO F82 CC(C)n1cc(cn1)NC(=O)Cc2ccc(cc2OC)Oc3c4cc(c(cc4ncn3)OC)OC
+4AGD B49 CCN(CC)CCNC(=O)c1c(c([nH]c1C)C=C2c3cc(ccc3NC2=O)F)C
+4ASD BAX CNC(=O)c1cc(ccn1)Oc2ccc(cc2)NC(=O)Nc3ccc(c(c3)C(F)(F)F)Cl
+4ASE AV9 CC1=CC(=NC(=O)Nc2ccc(cc2Cl)Oc3ccnc4c3cc(c(c4)OC)OC)NO1
+5EW3 5T2 c1ccc(c(c1)C(=O)Nc2cccc(c2)C(F)(F)F)NCc3ccncc3
+6GQP F88 CCn1cc(cn1)CC(=O)Nc2ccc(cc2)Oc3c4cc(c(cc4ncn3)OC)OC
+6GQQ F8B CC(C)c1cn(nn1)CC(=O)Nc2ccc(cc2)Oc3c4cc(c(cc4ncn3)OC)OC
+6XVJ O35 Cc1cc(cc(c1)NC(=O)Cc2c(cc(cn2)Oc3ccnc4c3ccc(c4)OC)OC)CN(C)C
+3WZD LEV COc1cc2c(cc1C(=O)N)c(ccn2)Oc3ccc(c(c3)Cl)NC(=O)NC4CC4
+3WZE BAX CNC(=O)c1cc(ccn1)Oc2ccc(cc2)NC(=O)Nc3ccc(c(c3)C(F)(F)F)Cl
+3WZE BAX O=C1N(Cc2ccccc2)c2ccc(cc2C1=O)N(C(=O)CBr)C(C)C(=O)NCc1ccccc1
