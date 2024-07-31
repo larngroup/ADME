@@ -1,5 +1,5 @@
-# ADME
-Attention-Driven Molecular Evaluation (ADME): Identifying Critical Functional Groups for Biological Affinity with Transformer models
+# ABIET
+Attention-Based Importance Estimator Tool (ABIET): An Explainable Transformer for Identifying Functional Groups in Biological Active Molecules
 
 <p align="justify"> This study focuses on the comparative analysis of various strategies for extracting token importance from attention weights in a masked-language model Transformer implementation, using canonical and stereochemical SMILES notation. We demonstrate that tokens focusing more prominent attention are associated with more critical molecular regions, such as functional groups (FGs).
 Hence, we identified a valuable strategy for obtaining token importance, demonstrating that the attention directed toward FGs is statistically higher than that toward the remaining atoms of the molecule. The comparative analysis allowed us to conclude that the initial layers of the Transformer and considering the bidirectional interactions between the tokens are more informative about the individual relevance of each token. </p>
